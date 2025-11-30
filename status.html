@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Job Status - RNA-seq Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧬 RNA-seq Analysis Platform</h1>
+            <p>Check your job status</p>
+        </header>
+
+        <nav>
+            <a href="index.html">Upload</a>
+            <a href="status.html" class="active">Check Status</a>
+            <a href="results.html">Results</a>
+        </nav>
+
+        <main>
+            <div class="status-section">
+                <h2>Check Job Status</h2>
+                
+                <form id="statusForm">
+                    <div class="form-group">
+                        <label for="jobIdInput">Enter Job ID</label>
+                        <input type="text" id="jobIdInput" required 
+                               placeholder="job_20251130_143022">
+                        <small>Enter the Job ID you received when you uploaded files</small>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Check Status</button>
+                </form>
+
+                <div id="statusLoading" class="loading-section" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Loading job status...</p>
+                </div>
+
+                <div id="statusDisplay" class="status-display" style="display: none;">
+                    <div class="status-header">
+                        <h3>Job: <span id="displayJobId"></span></h3>
+                        <span id="statusBadge" class="status-badge"></span>
+                    </div>
+
+                    <div class="status-progress">
+                        <div class="progress-bar">
+                            <div id="statusProgressFill" class="progress-fill"></div>
+                        </div>
+                        <p id="statusStage"></p>
+                        <p id="statusPercent"></p>
+                    </div>
+
+                    <div class="status-info">
+                        <div class="info-row">
+                            <span class="info-label">Created:</span>
+                            <span id="createdAt"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Updated:</span>
+                            <span id="updatedAt"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Files:</span>
+                            <span id="fileCount"></span>
+                        </div>
+                    </div>
+
+                    <div id="statusLog" class="status-log">
+                        <h4>Activity Log</h4>
+                        <div id="logEntries"></div>
+                    </div>
+
+                    <div id="statusActions" class="status-actions">
+                        <button onclick="refreshStatus()" class="btn-secondary">Refresh</button>
+                        <button onclick="enableAutoRefresh()" id="autoRefreshBtn" class="btn-secondary">
+                            Enable Auto-Refresh
+                        </button>
+                    </div>
+
+                    <div id="completedActions" style="display: none;">
+                        <a id="resultsLink" href="results.html" class="btn-primary">View Results</a>
+                    </div>
+                </div>
+
+                <div id="statusError" class="error-section" style="display: none;">
+                    <h3>❌ Job Not Found</h3>
+                    <p id="statusErrorMsg"></p>
+                    <button onclick="location.reload()" class="btn-secondary">Try Again</button>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>📊 Status Stages</h3>
+                <ul class="status-stages">
+                    <li><span class="stage-pending">⏳ Pending</span> - Job created, waiting in queue</li>
+                    <li><span class="stage-accepted">✓ Accepted</span> - Server accepted your job</li>
+                    <li><span class="stage-downloading">⬇️ Downloading</span> - Downloading files from storage</li>
+                    <li><span class="stage-processing">⚙️ Processing</span> - Running analysis pipeline</li>
+                    <li><span class="stage-uploading">⬆️ Uploading</span> - Uploading results</li>
+                    <li><span class="stage-completed">✅ Completed</span> - Analysis done, results ready</li>
+                    <li><span class="stage-failed">❌ Failed</span> - Error occurred, check log</li>
+                </ul>
+
+                <h3>⏱️ Expected Timeline</h3>
+                <ul>
+                    <li>Small jobs (2-5 files): 30-60 minutes</li>
+                    <li>Medium jobs (6-10 files): 1-2 hours</li>
+                    <li>Large jobs (11-20 files): 2-3 hours</li>
+                </ul>
+
+                <p class="info-note">
+                    <strong>Note:</strong> Processing time depends on file size, 
+                    number of samples, and server load. You'll receive an email 
+                    when your job is complete.
+                </p>
+            </div>
+        </main>
+
+        <footer>
+            <p>RNA-seq Analysis Platform • Free & Open Source • 
+               <a href="https://github.com/yourusername/rnaseq-analysis" target="_blank">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let autoRefreshInterval = null;
+
+        document.getElementById('statusForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const jobId = document.getElementById('jobIdInput').value.trim();
+            await checkJobStatus(jobId);
+        });
+
+        async function checkJobStatus(jobId) {
+            // Hide all sections
+            document.getElementById('statusForm').style.display = 'none';
+            document.getElementById('statusDisplay').style.display = 'none';
+            document.getElementById('statusError').style.display = 'none';
+            document.getElementById('statusLoading').style.display = 'block';
+
+            try {
+                const status = await getJobStatus(jobId);
+                displayStatus(status);
+            } catch (error) {
+                document.getElementById('statusLoading').style.display = 'none';
+                document.getElementById('statusError').style.display = 'block';
+                document.getElementById('statusErrorMsg').textContent = error.message;
+            }
+        }
+
+        function displayStatus(status) {
+            document.getElementById('statusLoading').style.display = 'none';
+            document.getElementById('statusDisplay').style.display = 'block';
+            document.getElementById('statusForm').style.display = 'none';
+
+            // Header
+            document.getElementById('displayJobId').textContent = status.job_id;
+            
+            // Status badge
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = status.status.toUpperCase();
+            badge.className = 'status-badge status-' + status.status;
+
+            // Progress
+            const progress = status.progress || 0;
+            document.getElementById('statusProgressFill').style.width = progress + '%';
+            document.getElementById('statusStage').textContent = status.stage || 'Initializing...';
+            document.getElementById('statusPercent').textContent = `${progress}% complete`;
+
+            // Info
+            document.getElementById('createdAt').textContent = formatTimestamp(status.created_at);
+            document.getElementById('updatedAt').textContent = formatTimestamp(status.updated_at);
+            document.getElementById('fileCount').textContent = (status.files || []).length + ' files';
+
+            // Log
+            const logEntries = document.getElementById('logEntries');
+            logEntries.innerHTML = '';
+            
+            if (status.log && status.log.length > 0) {
+                status.log.reverse().forEach(entry => {
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'log-entry';
+                    
+                    const parts = entry.split(' - ');
+                    const timestamp = parts[0];
+                    const message = parts.slice(1).join(' - ');
+                    
+                    logEntry.innerHTML = `
+                        <span class="log-time">${timestamp}</span>
+                        <span class="log-msg">${message}</span>
+                    `;
+                    logEntries.appendChild(logEntry);
+                });
+            } else {
+                logEntries.innerHTML = '<p class="no-logs">No activity yet</p>';
+            }
+
+            // Actions based on status
+            if (status.status === 'completed') {
+                document.getElementById('completedActions').style.display = 'block';
+                document.getElementById('resultsLink').href = 'results.html?job_id=' + status.job_id;
+                disableAutoRefresh();
+            } else if (status.status === 'failed') {
+                disableAutoRefresh();
+            } else {
+                document.getElementById('completedActions').style.display = 'none';
+            }
+        }
+
+        function refreshStatus() {
+            const jobId = document.getElementById('displayJobId').textContent;
+            checkJobStatus(jobId);
+        }
+
+        function enableAutoRefresh() {
+            if (autoRefreshInterval) return;
+            
+            autoRefreshInterval = setInterval(() => {
+                refreshStatus();
+            }, 10000); // Refresh every 10 seconds
+            
+            document.getElementById('autoRefreshBtn').textContent = 'Auto-Refresh Enabled';
+            document.getElementById('autoRefreshBtn').classList.add('active');
+            document.getElementById('autoRefreshBtn').onclick = disableAutoRefresh;
+        }
+
+        function disableAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            
+            document.getElementById('autoRefreshBtn').textContent = 'Enable Auto-Refresh';
+            document.getElementById('autoRefreshBtn').classList.remove('active');
+            document.getElementById('autoRefreshBtn').onclick = enableAutoRefresh;
+        }
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        // Check if job_id in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobIdFromUrl = urlParams.get('job_id');
+        if (jobIdFromUrl) {
+            document.getElementById('jobIdInput').value = jobIdFromUrl;
+            checkJobStatus(jobIdFromUrl);
+        }
+    </script>
+</body>
+</html>
