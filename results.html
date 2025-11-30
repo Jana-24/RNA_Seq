@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Results - RNA-seq Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧬 RNA-seq Analysis Platform</h1>
+            <p>View and download results</p>
+        </header>
+
+        <nav>
+            <a href="index.html">Upload</a>
+            <a href="status.html">Check Status</a>
+            <a href="results.html" class="active">Results</a>
+        </nav>
+
+        <main>
+            <div class="results-section">
+                <h2>View Results</h2>
+                
+                <form id="resultsForm">
+                    <div class="form-group">
+                        <label for="jobIdInput">Enter Job ID</label>
+                        <input type="text" id="jobIdInput" required 
+                               placeholder="job_20251130_143022">
+                        <small>Enter the Job ID to view results</small>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Get Results</button>
+                </form>
+
+                <div id="resultsLoading" class="loading-section" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Loading results...</p>
+                </div>
+
+                <div id="resultsDisplay" class="results-display" style="display: none;">
+                    <div class="results-header">
+                        <h3>Results for Job: <span id="displayJobId"></span></h3>
+                        <span id="completedTime"></span>
+                    </div>
+
+                    <div class="results-files">
+                        <h4>📥 Available Files</h4>
+                        <div id="filesList"></div>
+                    </div>
+
+                    <div class="results-summary">
+                        <h4>📊 Analysis Summary</h4>
+                        <div id="summaryContent"></div>
+                    </div>
+
+                    <div class="results-actions">
+                        <button onclick="downloadAll()" class="btn-primary">Download All</button>
+                        <button onclick="location.href='status.html?job_id=' + currentJobId" 
+                                class="btn-secondary">View Status</button>
+                    </div>
+                </div>
+
+                <div id="resultsError" class="error-section" style="display: none;">
+                    <h3>❌ Results Not Available</h3>
+                    <p id="resultsErrorMsg"></p>
+                    <button onclick="location.reload()" class="btn-secondary">Try Again</button>
+                </div>
+
+                <div id="resultsNotReady" class="warning-section" style="display: none;">
+                    <h3>⏳ Results Not Ready Yet</h3>
+                    <p>This job is still processing. Please check back later.</p>
+                    <p>Current status: <strong id="currentStatus"></strong></p>
+                    <div class="actions">
+                        <a id="statusLink" href="#" class="btn-primary">Check Status</a>
+                        <button onclick="location.reload()" class="btn-secondary">Refresh</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>📁 Result Files</h3>
+                <p>Completed jobs will include:</p>
+                <ul>
+                    <li><strong>predicted_phases.csv</strong> - ML predictions with probabilities</li>
+                    <li><strong>pca_plots.pdf</strong> - PCA visualization for each sample</li>
+                    <li><strong>quality_metrics_summary.xlsx</strong> - QC metrics</li>
+                    <li><strong>train_vst_batch_corrected.csv</strong> - Normalized training data</li>
+                    <li><strong>test_vst_batch_corrected.csv</strong> - Normalized test data</li>
+                    <li><strong>normalization_summary.txt</strong> - Normalization details</li>
+                </ul>
+
+                <h3>💡 Tips</h3>
+                <ul>
+                    <li>Results are available for 30 days after completion</li>
+                    <li>Download all files for complete analysis</li>
+                    <li>Open .csv files in Excel or any spreadsheet software</li>
+                    <li>PCA plots show sample clustering and predictions</li>
+                </ul>
+            </div>
+        </main>
+
+        <footer>
+            <p>RNA-seq Analysis Platform • Free & Open Source • 
+               <a href="https://github.com/yourusername/rnaseq-analysis" target="_blank">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+        let currentJobId = null;
+        let resultsData = null;
+
+        document.getElementById('resultsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const jobId = document.getElementById('jobIdInput').value.trim();
+            await loadResults(jobId);
+        });
+
+        async function loadResults(jobId) {
+            currentJobId = jobId;
+
+            // Hide all sections
+            document.getElementById('resultsForm').style.display = 'none';
+            document.getElementById('resultsDisplay').style.display = 'none';
+            document.getElementById('resultsError').style.display = 'none';
+            document.getElementById('resultsNotReady').style.display = 'none';
+            document.getElementById('resultsLoading').style.display = 'block';
+
+            try {
+                // First check status
+                const status = await getJobStatus(jobId);
+
+                if (status.status !== 'completed') {
+                    // Job not completed yet
+                    document.getElementById('resultsLoading').style.display = 'none';
+                    document.getElementById('resultsNotReady').style.display = 'block';
+                    document.getElementById('currentStatus').textContent = status.status;
+                    document.getElementById('statusLink').href = 'status.html?job_id=' + jobId;
+                    return;
+                }
+
+                // Get results
+                const results = await getJobResults(jobId);
+                displayResults(results, status);
+
+            } catch (error) {
+                document.getElementById('resultsLoading').style.display = 'none';
+                document.getElementById('resultsError').style.display = 'block';
+                document.getElementById('resultsErrorMsg').textContent = error.message;
+            }
+        }
+
+        function displayResults(results, status) {
+            resultsData = results;
+
+            document.getElementById('resultsLoading').style.display = 'none';
+            document.getElementById('resultsDisplay').style.display = 'block';
+
+            // Header
+            document.getElementById('displayJobId').textContent = results.job_id;
+            document.getElementById('completedTime').textContent = 
+                'Completed: ' + formatTimestamp(status.updated_at);
+
+            // Files list
+            const filesList = document.getElementById('filesList');
+            filesList.innerHTML = '';
+
+            if (results.files && results.files.length > 0) {
+                results.files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-result-item';
+                    
+                    const icon = getFileIcon(file.name);
+                    const size = formatFileSize(file.size);
+                    
+                    fileItem.innerHTML = `
+                        <div class="file-info">
+                            <span class="file-icon">${icon}</span>
+                            <div class="file-details">
+                                <div class="file-name">${file.name}</div>
+                                <div class="file-meta">${size}</div>
+                            </div>
+                        </div>
+                        <button onclick="downloadFile('${file.id}', '${file.name}')" 
+                                class="btn-download">Download</button>
+                    `;
+                    
+                    filesList.appendChild(fileItem);
+                });
+            } else {
+                filesList.innerHTML = '<p>No result files available</p>';
+            }
+
+            // Summary
+            const summaryContent = document.getElementById('summaryContent');
+            if (results.summary) {
+                summaryContent.innerHTML = `
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span class="summary-label">Samples Analyzed</span>
+                            <span class="summary-value">${results.summary.samples || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Genes Processed</span>
+                            <span class="summary-value">${results.summary.genes || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Processing Time</span>
+                            <span class="summary-value">${results.summary.duration || 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Status</span>
+                            <span class="summary-value success">✓ Complete</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                summaryContent.innerHTML = '<p>Summary not available</p>';
+            }
+        }
+
+        async function downloadFile(fileId, fileName) {
+            try {
+                const url = await getDownloadUrl(currentJobId, fileId);
+                
+                // Create temporary link and trigger download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+            } catch (error) {
+                alert('Error downloading file: ' + error.message);
+            }
+        }
+
+        async function downloadAll() {
+            if (!resultsData || !resultsData.files) return;
+            
+            const confirmed = confirm(
+                `This will download ${resultsData.files.length} files. Continue?`
+            );
+            
+            if (!confirmed) return;
+            
+            for (const file of resultsData.files) {
+                await downloadFile(file.id, file.name);
+                // Small delay between downloads
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+
+        function getFileIcon(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            const icons = {
+                'csv': '📊',
+                'pdf': '📄',
+                'xlsx': '📈',
+                'txt': '📝',
+                'html': '🌐',
+                'json': '📋'
+            };
+            return icons[ext] || '📁';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        // Check if job_id in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobIdFromUrl = urlParams.get('job_id');
+        if (jobIdFromUrl) {
+            document.getElementById('jobIdInput').value = jobIdFromUrl;
+            loadResults(jobIdFromUrl);
+        }
+    </script>
+</body>
+</html>
