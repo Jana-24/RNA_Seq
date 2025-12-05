@@ -4,7 +4,347 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Check Job Status - RNA-seq Analysis</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        nav {
+            background: #f8f9fa;
+            padding: 0;
+            display: flex;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        nav a {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            text-decoration: none;
+            color: #495057;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        nav a:hover {
+            background: #e9ecef;
+        }
+        
+        nav a.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        main {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 600;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #6c757d;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: scale(1.02);
+        }
+        
+        .btn-secondary {
+            padding: 12px 24px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .loading-section {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e9ecef;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .status-display {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+        }
+        
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .status-header h3 {
+            color: #495057;
+        }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-processing {
+            background: #cce5ff;
+            color: #004085;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-progress {
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            border-radius: 15px;
+        }
+        
+        .status-info {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #6c757d;
+        }
+        
+        .status-log {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status-log h4 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+        
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-time {
+            color: #6c757d;
+            margin-right: 10px;
+        }
+        
+        .status-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .status-actions button.active {
+            background: #28a745;
+        }
+        
+        .error-section {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .info-section {
+            background: #e7f3ff;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        .info-section h3 {
+            color: #004085;
+            margin-bottom: 15px;
+        }
+        
+        .info-section ul {
+            margin-left: 20px;
+        }
+        
+        .info-section li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+        
+        .status-stages {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .status-stages li {
+            padding: 10px 15px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-stages li span {
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+        }
+        
+        footer a {
+            color: #667eea;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -21,7 +361,7 @@
 
         <main>
             <div class="status-section">
-                <h2>Check Job Status</h2>
+                <h2 style="margin-bottom: 20px;">Check Job Status</h2>
                 
                 <form id="statusForm">
                     <div class="form-group">
@@ -49,8 +389,8 @@
                         <div class="progress-bar">
                             <div id="statusProgressFill" class="progress-fill"></div>
                         </div>
-                        <p id="statusStage"></p>
-                        <p id="statusPercent"></p>
+                        <p id="statusStage" style="font-weight: 600; color: #495057;"></p>
+                        <p id="statusPercent" style="color: #6c757d;"></p>
                     </div>
 
                     <div class="status-info">
@@ -59,7 +399,7 @@
                             <span id="createdAt"></span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">Updated:</span>
+                            <span class="info-label">Last Updated:</span>
                             <span id="updatedAt"></span>
                         </div>
                         <div class="info-row">
@@ -69,67 +409,73 @@
                     </div>
 
                     <div id="statusLog" class="status-log">
-                        <h4>Activity Log</h4>
+                        <h4>📋 Activity Log</h4>
                         <div id="logEntries"></div>
                     </div>
 
                     <div id="statusActions" class="status-actions">
-                        <button onclick="refreshStatus()" class="btn-secondary">Refresh</button>
-                        <button onclick="enableAutoRefresh()" id="autoRefreshBtn" class="btn-secondary">
-                            Enable Auto-Refresh
+                        <button onclick="refreshStatus()" class="btn-secondary">🔄 Refresh</button>
+                        <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="btn-secondary">
+                            ⏱️ Auto-Refresh: OFF
                         </button>
                     </div>
 
-                    <div id="completedActions" style="display: none;">
-                        <a id="resultsLink" href="results.html" class="btn-primary">View Results</a>
+                    <div id="completedActions" style="display: none; margin-top: 20px;">
+                        <a id="resultsLink" href="results.html" class="btn-primary" style="display: inline-block; text-align: center;">
+                            📊 View Results
+                        </a>
                     </div>
                 </div>
 
                 <div id="statusError" class="error-section" style="display: none;">
                     <h3>❌ Job Not Found</h3>
                     <p id="statusErrorMsg"></p>
-                    <button onclick="location.reload()" class="btn-secondary">Try Again</button>
+                    <button onclick="resetForm()" class="btn-secondary" style="margin-top: 15px;">Try Again</button>
                 </div>
             </div>
 
             <div class="info-section">
-                <h3>📊 Status Stages</h3>
+                <h3>📊 Status Guide</h3>
                 <ul class="status-stages">
-                    <li><span class="stage-pending">⏳ Pending</span> - Job created, waiting in queue</li>
-                    <li><span class="stage-accepted">✓ Accepted</span> - Server accepted your job</li>
-                    <li><span class="stage-downloading">⬇️ Downloading</span> - Downloading files from storage</li>
-                    <li><span class="stage-processing">⚙️ Processing</span> - Running analysis pipeline</li>
-                    <li><span class="stage-uploading">⬆️ Uploading</span> - Uploading results</li>
-                    <li><span class="stage-completed">✅ Completed</span> - Analysis done, results ready</li>
-                    <li><span class="stage-failed">❌ Failed</span> - Error occurred, check log</li>
+                    <li>
+                        <span class="status-badge status-pending">PENDING</span>
+                        Job created, waiting to be processed by the server
+                    </li>
+                    <li>
+                        <span class="status-badge status-processing">PROCESSING</span>
+                        Server is actively analyzing your data
+                    </li>
+                    <li>
+                        <span class="status-badge status-completed">COMPLETED</span>
+                        Analysis finished, results are ready
+                    </li>
+                    <li>
+                        <span class="status-badge status-failed">FAILED</span>
+                        An error occurred, check the log for details
+                    </li>
                 </ul>
 
-                <h3>⏱️ Expected Timeline</h3>
+                <h3 style="margin-top: 25px;">⏱️ Expected Timeline</h3>
                 <ul>
                     <li>Small jobs (2-5 files): 30-60 minutes</li>
                     <li>Medium jobs (6-10 files): 1-2 hours</li>
                     <li>Large jobs (11-20 files): 2-3 hours</li>
                 </ul>
-
-                <p class="info-note">
-                    <strong>Note:</strong> Processing time depends on file size, 
-                    number of samples, and server load. You'll receive an email 
-                    when your job is complete.
-                </p>
             </div>
         </main>
 
         <footer>
-            <p>RNA-seq Analysis Platform • Free & Open Source • 
-               <a href="https://github.com/yourusername/rnaseq-analysis" target="_blank">GitHub</a>
-            </p>
+            <p>RNA-seq Analysis Platform • Free & Open Source</p>
         </footer>
     </div>
 
-    <script src="config.js"></script>
-    <script src="app.js"></script>
     <script>
+        // Configuration
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfSjbhX4dqAtptYecF-9zpAtKYSswn2cJQT0n28ndeZzwZRsBM0X_gaNH3f3AHmIbu4w/exec';
+        
+        let currentJobId = null;
         let autoRefreshInterval = null;
+        let autoRefreshEnabled = false;
 
         document.getElementById('statusForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -138,15 +484,25 @@
         });
 
         async function checkJobStatus(jobId) {
-            // Hide all sections
+            currentJobId = jobId;
+            
+            // Hide all sections, show loading
             document.getElementById('statusForm').style.display = 'none';
             document.getElementById('statusDisplay').style.display = 'none';
             document.getElementById('statusError').style.display = 'none';
             document.getElementById('statusLoading').style.display = 'block';
 
             try {
-                const status = await getJobStatus(jobId);
+                const url = `${APPS_SCRIPT_URL}?action=get_status&job_id=${jobId}`;
+                const response = await fetch(url);
+                const status = await response.json();
+                
+                if (status.error) {
+                    throw new Error(status.error);
+                }
+                
                 displayStatus(status);
+                
             } catch (error) {
                 document.getElementById('statusLoading').style.display = 'none';
                 document.getElementById('statusError').style.display = 'block';
@@ -157,7 +513,6 @@
         function displayStatus(status) {
             document.getElementById('statusLoading').style.display = 'none';
             document.getElementById('statusDisplay').style.display = 'block';
-            document.getElementById('statusForm').style.display = 'none';
 
             // Header
             document.getElementById('displayJobId').textContent = status.job_id;
@@ -176,75 +531,111 @@
             // Info
             document.getElementById('createdAt').textContent = formatTimestamp(status.created_at);
             document.getElementById('updatedAt').textContent = formatTimestamp(status.updated_at);
-            document.getElementById('fileCount').textContent = (status.files || []).length + ' files';
+            document.getElementById('fileCount').textContent = 
+                (status.files_copied || (status.files ? status.files.length : 0)) + ' files';
 
-            // Log
+            // Log entries
             const logEntries = document.getElementById('logEntries');
             logEntries.innerHTML = '';
             
             if (status.log && status.log.length > 0) {
-                status.log.reverse().forEach(entry => {
+                // Show newest first
+                const reversedLog = [...status.log].reverse();
+                reversedLog.forEach(entry => {
                     const logEntry = document.createElement('div');
                     logEntry.className = 'log-entry';
                     
+                    // Parse timestamp from entry
                     const parts = entry.split(' - ');
                     const timestamp = parts[0];
                     const message = parts.slice(1).join(' - ');
                     
                     logEntry.innerHTML = `
-                        <span class="log-time">${timestamp}</span>
+                        <span class="log-time">${formatLogTime(timestamp)}</span>
                         <span class="log-msg">${message}</span>
                     `;
                     logEntries.appendChild(logEntry);
                 });
             } else {
-                logEntries.innerHTML = '<p class="no-logs">No activity yet</p>';
+                logEntries.innerHTML = '<p style="color: #6c757d;">No activity recorded yet</p>';
             }
 
             // Actions based on status
+            const completedActions = document.getElementById('completedActions');
+            
             if (status.status === 'completed') {
-                document.getElementById('completedActions').style.display = 'block';
+                completedActions.style.display = 'block';
                 document.getElementById('resultsLink').href = 'results.html?job_id=' + status.job_id;
                 disableAutoRefresh();
             } else if (status.status === 'failed') {
+                completedActions.style.display = 'none';
                 disableAutoRefresh();
             } else {
-                document.getElementById('completedActions').style.display = 'none';
+                completedActions.style.display = 'none';
             }
         }
 
         function refreshStatus() {
-            const jobId = document.getElementById('displayJobId').textContent;
-            checkJobStatus(jobId);
+            if (currentJobId) {
+                checkJobStatus(currentJobId);
+            }
+        }
+
+        function toggleAutoRefresh() {
+            if (autoRefreshEnabled) {
+                disableAutoRefresh();
+            } else {
+                enableAutoRefresh();
+            }
         }
 
         function enableAutoRefresh() {
             if (autoRefreshInterval) return;
             
+            autoRefreshEnabled = true;
             autoRefreshInterval = setInterval(() => {
                 refreshStatus();
             }, 10000); // Refresh every 10 seconds
             
-            document.getElementById('autoRefreshBtn').textContent = 'Auto-Refresh Enabled';
-            document.getElementById('autoRefreshBtn').classList.add('active');
-            document.getElementById('autoRefreshBtn').onclick = disableAutoRefresh;
+            const btn = document.getElementById('autoRefreshBtn');
+            btn.textContent = '⏱️ Auto-Refresh: ON';
+            btn.classList.add('active');
         }
 
         function disableAutoRefresh() {
+            autoRefreshEnabled = false;
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
                 autoRefreshInterval = null;
             }
             
-            document.getElementById('autoRefreshBtn').textContent = 'Enable Auto-Refresh';
-            document.getElementById('autoRefreshBtn').classList.remove('active');
-            document.getElementById('autoRefreshBtn').onclick = enableAutoRefresh;
+            const btn = document.getElementById('autoRefreshBtn');
+            btn.textContent = '⏱️ Auto-Refresh: OFF';
+            btn.classList.remove('active');
+        }
+
+        function resetForm() {
+            document.getElementById('statusForm').style.display = 'block';
+            document.getElementById('statusDisplay').style.display = 'none';
+            document.getElementById('statusError').style.display = 'none';
+            document.getElementById('statusLoading').style.display = 'none';
+            disableAutoRefresh();
         }
 
         function formatTimestamp(timestamp) {
             if (!timestamp) return 'N/A';
             const date = new Date(timestamp);
             return date.toLocaleString();
+        }
+
+        function formatLogTime(timestamp) {
+            if (!timestamp) return '';
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString();
+            } catch {
+                return timestamp;
+            }
         }
 
         // Check if job_id in URL
