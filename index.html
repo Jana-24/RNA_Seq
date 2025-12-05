@@ -547,7 +547,7 @@
             }
         }
 
-// Shared Links Form Submission
+        // Shared Links Form Submission
         document.getElementById('sharedLinksForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -602,66 +602,6 @@
                         </p>
                     `;
                     document.getElementById('filesSummary').innerHTML = summary;
-                }, 500);
-                
-            } catch (error) {
-                document.getElementById('uploadProgress').style.display = 'none';
-                document.getElementById('uploadError').style.display = 'block';
-                document.getElementById('errorMessage').textContent = error.message;
-            }
-        });
-            
-            if (fileLinks.length === 0) {
-                alert('Please add at least one link');
-                return;
-            }
-            
-            // Hide form, show progress
-            document.getElementById('sharedLinksSection').style.display = 'none';
-            document.getElementById('uploadProgress').style.display = 'block';
-            updateProgress(30, 'Submitting job to server...');
-            
-            try {
-                const response = await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: 'create_job_from_links',
-                        data: {
-                            user_email: email,
-                            file_links: fileLinks
-                        }
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.error) {
-                    throw new Error(result.error);
-                }
-                
-                updateProgress(100, 'Files copied successfully!');
-                
-                // Show success
-                setTimeout(() => {
-                    document.getElementById('uploadProgress').style.display = 'none';
-                    document.getElementById('uploadResult').style.display = 'block';
-                    document.getElementById('jobId').textContent = result.job_id;
-                    
-                    const summary = `
-                        <p style="margin-top: 15px;">
-                            <strong>Files copied:</strong> ${result.files_copied}<br>
-                            <strong>Links processed:</strong> ${result.files_total}
-                            ${result.files_failed > 0 ? `<br><span style="color: #dc3545;"><strong>Issues:</strong> ${result.files_failed}</span>` : ''}
-                        </p>
-                    `;
-                    document.getElementById('filesSummary').innerHTML = summary;
-                    
-                    // Show errors if any
-                    if (result.errors && result.errors.length > 0) {
-                        document.getElementById('errorsSection').style.display = 'block';
-                        const errorsList = document.getElementById('errorsList');
-                        errorsList.innerHTML = result.errors.map(err => `<li>${err}</li>`).join('');
-                    }
                 }, 500);
                 
             } catch (error) {
