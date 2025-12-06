@@ -211,21 +211,6 @@
         .btn-view { background: #6b7280; color: white; }
         .btn-view:hover { background: #4b5563; }
         
-        .folder-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 14px 24px;
-            background: #16a34a;
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            margin-top: 20px;
-        }
-        
-        .folder-link:hover { background: #15803d; }
-        
         .empty-state {
             text-align: center;
             padding: 50px 20px;
@@ -438,10 +423,6 @@
                 }
                 
                 html += '</div>';
-                
-                if (files.results_folder_url) {
-                    html += `<a href="${files.results_folder_url}" target="_blank" class="folder-link">📂 Open All in Google Drive</a>`;
-                }
             } else if (status.status === 'completed') {
                 html += '<div class="empty-state"><p>No files found. They may still be uploading.</p></div>';
             } else if (status.status === 'processing') {
